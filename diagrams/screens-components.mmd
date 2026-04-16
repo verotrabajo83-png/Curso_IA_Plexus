@@ -1,0 +1,266 @@
+%% Diagrama 1: Flujo crear tarea con sugerencia de IA
+flowchart TD
+	Start([Usuario entra en la app]) --> Home[Home / Lista de tareas]
+	Home --> ClickCreate[Pulsa "Nueva tarea" (FAB o botón)]
+	ClickCreate --> OpenForm[Abrir `TaskForm` (Modal/Drawer)]
+	OpenForm --> Fill[Completa título, descripción, etiquetas]
+	Fill --> RequestAISuggest[Pulsa "Sugerir prioridad IA" o al guardar]
+	RequestAISuggest --> AISuggest[IA calcula Impact / Confidence / Ease]
+	AISuggest --> ShowModal[Mostrar `PriorityModal` con desagregado]
+	ShowModal --> Decision{¿Aceptar sugerencia?}
+	Decision -->|Aceptar| Save[Confirmar y guardar tarea]
+	Decision -->|Ajustar| Adjust[Ajustar sliders Impact/Confidence/Ease]
+	Adjust --> Recalc[Recalcular ICE en tiempo real]
+	Recalc --> ShowModal
+	Save --> Persist[Guardar en backend y actualizar UI]
+	Persist --> ShowCard[Muestra `TaskCard` en `TaskList` con badge ICE]
+	ShowCard --> Undo[Snackbar: "Tarea creada — Deshacer?"]
+	Undo --> Done[Fin del flujo]
+
+%% Diagrama 2: Flujo de navegación de usuario
+flowchart LR
+	subgraph NavBar[Navbar (AppBar)]
+		A[Logo] --> B[Selector de proyecto]
+		B --> C[Busqueda]
+		C --> D[Botón + (Nueva tarea)]
+		D --> E[Avatar / Perfil]
+	end
+	NavBar --> Home[Home / Dashboard]
+	NavBar --> Tasks[Lista de Tareas]
+	NavBar --> Create[Crear tarea (Modal/Screen)]
+	NavBar --> Settings[Ajustes]
+	Home --> TaskCard[TaskCard]
+	TaskCard --> Details[TaskDetails]
+	Details --> Edit[Editar tarea]
+	Edit --> PriorityModal[PriorityModal (IA)]
+	Create --> PriorityModal
+	Settings --> Profile[Perfil]
+
+%% Diagrama 3: Pantallas y componentes principales — estructura
+flowchart TD
+	subgraph HomeScreen[Home / Lista de Tareas]
+		Filters[FiltersBar: search, filtros, orden]
+		TaskList[TaskList (Grid / List)]
+		FAB[Botón + (crear tarea)]
+	end
+	subgraph CreateTaskModal[Crear tarea (TaskForm Modal/Drawer)]
+		Title[TextField: Título]
+		Desc[TextArea: Descripción]
+		Tags[Chips: Etiquetas]
+		Due[DatePicker]
+		AiSuggest[Botón: "Sugerir prioridad IA"]
+	end
+	subgraph PriorityModal[PriorityModal (Dialog)]
+		AISummary[Card: ICE sugerido]
+		Impact[Slider: Impact]
+		Confidence[Slider: Confidence]
+		Ease[Slider: Ease]
+		Explanation[Texto: Justificación IA]
+		Actions[Aceptar / Ajustar / Recalcular]
+	end
+	subgraph TaskDetails[Task Details Screen]
+		Header[Header con título y acciones]
+		Meta[Meta: fecha, etiquetas, ICE badge]
+		Body[Descripción / Comentarios]
+		ActionsDtl[Editar / Completar / Eliminar]
+	end
+	subgraph Navbar[AppBar]
+		Logo[Logo]
+		ProjectSelector[Selector de proyecto]
+		Search[Search Field]
+		AddButton[+]
+		Avatar[Avatar]
+	end
+	HomeScreen --> CreateTaskModal
+	CreateTaskModal --> PriorityModal
+	TaskList --> TaskDetails
+	Navbar --> HomeScreen
+
+%% ==============================
+%% Especificaciones funcionales
+%% ==============================
+
+%% Estructura de carpetas propuesta (React + TypeScript)
+%% Raíz: `src/`
+%% - src/
+%%   - components/           # Componentes reutilizables por dominio
+%%     - Navbar/
+%%       - Navbar.tsx
+%%       - Navbar.styles.ts
+%%     - TaskList/
+%%       - TaskList.tsx
+%%       - TaskCard.tsx
+%%     - TaskForm/
+%%       - TaskForm.tsx
+%%       - TaskForm.types.ts
+%%     - PriorityModal/
+%%       - PriorityModal.tsx
+%%     - FiltersBar/
+%%       - FiltersBar.tsx
+%%     - AIIndicator/
+%%       - AIIndicator.tsx
+%%     - UI/                 # botones, chips, badges, snackbar wrappers
+%%   - pages/
+%%     - Home.tsx
+%%     - TaskDetails.tsx
+%%   - context/
+%%     - AppProvider.tsx     # contexto global + proveedor
+%%     - TaskContext.ts      # hooks/consumidores específicos
+%%   - hooks/
+%%     - useTasks.ts         # lógica de tareas (fetch, sync, optimistic)
+%%     - useAI.ts            # llamada a IA y cache de sugerencias
+%%     - useUI.ts            # estado UI local (modals, snackbars)
+%%   - services/
+%%     - api.ts              # llamadas a backend (REST/fetch)
+%%     - aiService.ts        # wrapper para endpoint IA
+%%   - types/
+%%     - index.ts            # interfaces: Task, Project, ICESuggestion, AppState
+%%   - utils/
+%%     - ice.ts              # función de cálculo ICE y helpers
+%%   - assets/
+%%   - styles/
+
+%% División en componentes (alto nivel)
+%% - `Navbar` : AppBar con selector de proyecto, búsqueda y botón crear.
+%% - `FiltersBar` : controles de búsqueda y filtros (por proyecto, tags, orden).
+%% - `TaskList` : Grid/List que renderiza `TaskCard`.
+%% - `TaskCard` : Card compacta con título, tags, badge ICE, acciones rápidas.
+%% - `TaskForm` : Modal/Drawer para crear/editar tarea (TextField, DatePicker, Chips).
+%% - `PriorityModal` : Dialog que muestra la sugerencia IA y sliders para ajustar Impact/Confidence/Ease.
+%% - `AIIndicator` : pequeño componente que muestra confianza y link a explicación.
+%% - `TaskDetails` : pantalla con descripción completa, comentarios y meta.
+%% - UI atoms : `Button`, `Chip`, `Badge`, `Snackbar` centralizado.
+
+%% Gestión del estado (sin librerías externas)
+%% Principios:
+%% - Estado global: usar `React.createContext` + `useReducer` para la lógica de dominio (tareas, proyectos, filtros).
+%% - Estado local/UI: `useState` o `useReducer` local (modals, formularios no sincronizados).
+%% - Separación: el contexto expone estado + dispatch; consumir mediante hooks tipo `useTasks()` y `useUI()`.
+
+%% Estructura sugerida para el state (TypeScript types en `src/types/index.ts`):
+%% interface Task { id: string; title: string; description?: string; tags: string[]; due?: string; ice?: number; impact?: number; confidence?: number; ease?: number; completed: boolean; }
+%% interface ICESuggestion { impact: number; confidence: number; ease: number; ice: number; explanation?: string; source: 'ai' | 'user' }
+%% interface AppState { tasks: Record<string, Task>; projects: Record<string, Project>; filters: Filters; ui: UIState; }
+
+%% Reducer actions (ejemplos):
+%% - ADD_TASK (payload: Task)
+%% - UPDATE_TASK (payload: Partial<Task> + id)
+%% - SET_ICE_SUGGESTION (payload: {id, suggestion: ICESuggestion})
+%% - ACCEPT_ICE (payload: {id, suggestion})
+%% - REVERT_LAST_ACTION ()
+%% - SET_FILTERS (payload: Filters)
+
+%% Patrón de interacción con IA:
+%% - `PriorityModal` solicita sugerencia mediante `useAI()` -> llama a `aiService.suggestICE(taskDraft)` -> devuelve `ICESuggestion`.
+%% - La sugerencia se puede mostrar en modal sin persistir; al aceptar, se dispara `dispatch({type: 'ACCEPT_ICE', payload})` que actualiza la tarea y persiste vía `api.ts`.
+%% - Implementar optimistic update: al aceptar, actualizar estado local inmediatamente y luego confirmar con backend; en error, revertir con `REVERT_LAST_ACTION`.
+
+%% Hooks útiles (sin librerías):
+%% - `useTasks()` : wrap de context que expone `tasks`, `createTask()`, `updateTask()`, `removeTask()`.
+%% - `useAI()` : maneja llamadas a IA, cache por tarea (memoria simple), loading y errores.
+%% - `useUI()` : control de modals y snackbars.
+
+%% Notas de implementación TypeScript
+%% - Tipar acciones del reducer con discriminated unions.
+%% - Definir tipos claros para `Dispatch` y `Context` para evitar `any`.
+%% - Validar valores ICE (0..100 o escala definida) y normalizar antes de persistir.
+
+%% Consejos de despliegue y pruebas
+%% - Mantener `services/api.ts` aislado para facilitar mocks en tests.
+%% - Añadir pruebas unitarias a `utils/ice.ts` y hooks `useAI` y `useTasks`.
+
+%% ==============================
+%% Plan de refactor (paso a paso)
+%% ==============================
+%% 1) Separar UI y dominio
+%% - Crear `UIContext` para modals, snackbars y estado transitorio.
+%% - Mantener `TaskContext` exclusivamente para dominio (tasks, projects, filters).
+
+%% 2) Aislar side-effects
+%% - No ejecutar llamadas HTTP ni IA dentro de reducers.
+%% - Encapsular efectos en `hooks` (`useTasks`, `useAI`) que llamen a `services/*`.
+
+%% 3) Normalizar estado y usar selectores
+%% - Mantener `tasksById` + `taskIdsByProject` para evitar re-renders.
+%% - Añadir selectores memoizados (`useMemo`) y hooks de consulta.
+
+%% 4) Optimistic updates robustos
+%% - Implementar opId por operación; marcar operaciones `pending` en estado.
+%% - En fallo, revertir solo la operación afectada; soportar retry con backoff.
+
+%% 5) Desacoplar IA y cache
+%% - `useAI` devuelve `ICESuggestion` puro; cache con TTL y debounce; no muta el store.
+
+%% 6) Rendimiento en listas
+%% - Preparar `TaskList` para virtualización (react-window) y memoizar `TaskCard`.
+
+%% 7) Tests y contratos
+%% - Tests unitarios para `utils/ice.ts` y pruebas de integración para `useTasks`.
+%% - Definir contratos HTTP y de la IA (schemas) en `services/`.
+
+%% 8) Migración incremental
+%% - Implementar cambios en ramas pequeñas: primero `UIContext`, luego normalización, luego optimistic queue.
+%% - Medir re-renders y latencia en cada paso.
+
+%% ==============================
+%% Tipos TypeScript sugeridos (ejemplo)
+%% ==============================
+%% interface Task {
+%%   id: string;
+%%   title: string;
+%%   description?: string;
+%%   tags: string[];
+%%   due?: string; // ISO date
+%%   ice?: number;
+%%   impact?: number; // 0..10
+%%   confidence?: number; // 0..10
+%%   ease?: number; // 0..10
+%%   completed: boolean;
+%%   updatedAt?: string;
+%% }
+%%
+%% interface Project { id: string; name: string; color?: string }
+%%
+%% interface Filters { projectId?: string; tags?: string[]; search?: string; sort?: string }
+%%
+%% interface ICESuggestion {
+%%   impact: number;
+%%   confidence: number;
+%%   ease: number;
+%%   ice: number;
+%%   explanation?: string;
+%%   source: 'ai' | 'user';
+%% }
+%%
+%% interface UIState { modalOpen: Record<string, boolean>; snackbar?: {message: string; action?: string} }
+%%
+%% interface AppState {
+%%   tasksById: Record<string, Task>;
+%%   taskIdsByProject: Record<string, string[]>;
+%%   projects: Record<string, Project>;
+%%   filters: Filters;
+%%   ui: UIState;
+%% }
+%%
+%% // Acciones discriminadas para el reducer de tareas
+%% type TaskAction =
+%%   | { type: 'ADD_TASK'; payload: { task: Task; opId?: string } }
+%%   | { type: 'UPDATE_TASK'; payload: { id: string; changes: Partial<Task>; opId?: string } }
+%%   | { type: 'SET_ICE_SUGGESTION'; payload: { id: string; suggestion: ICESuggestion } }
+%%   | { type: 'ACCEPT_ICE'; payload: { id: string; suggestion: ICESuggestion; opId?: string } }
+%%   | { type: 'REVERT_OPERATION'; payload: { opId: string } }
+%%   | { type: 'SET_FILTERS'; payload: { filters: Filters } };
+%%
+%% Observaciones sobre los tipos:
+%% - Tipar `opId` permite mapear respuestas asíncronas a operaciones locales.
+%% - Evitar `any`; preferir discriminated unions para seguridad y autocompletado.
+
+%% ==============================
+%% Recomendaciones finales (rápidas)
+%% ==============================
+%% - Mantén reducers puros y side-effects en hooks/services.
+%% - Prioriza normalización y selectores para escalabilidad.
+%% - Documenta contratos de la IA y el backend antes de integrar.
+%% - Añade métricas simples (renders por interacción, latencia IA) para validar mejoras.
+
+

@@ -1,0 +1,21 @@
+flowchart LR
+  subgraph NAV [Navbar]
+    A[Tareas]
+    B[Crear]
+    C[Prioridades]
+    D[Ajustes]
+  end
+  A --> Tasks[TaskList]
+  B --> Create[TaskForm]
+  C --> Priorities[Vista: Filtrado/Orden por ICE]
+  D --> Settings[Configuración local (API key, preferencias)]
+
+  Tasks --> TaskCard[Tarjeta: `TaskCard`]
+  TaskCard --> Expand[Ver detalle / Editar]
+  Expand --> PriorityModal[Abrir `PriorityModal` (IA + edición)]
+  Create --> Submit[Calcular ICE -> `PriorityModal`]
+  PriorityModal --> Save[Confirmar -> Guardar -> volver a `TaskList`]
+
+  %% navegación secundaria
+  Tasks --> Search[Barra de búsqueda]
+  Tasks --> Sort[Controles de orden]
